@@ -3,6 +3,9 @@
 #include <type_traits>
 #include <algorithm>
 #include <span>
+#if _MSC_VER && !__INTEL_COMPILER // msvc getting a special treatment... (https://en.cppreference.com/w/cpp/language/operator_alternative)
+#include <ciso646>
+#endif
 
 #include "internal/helpers.hpp"
 #include "type_id.hpp"

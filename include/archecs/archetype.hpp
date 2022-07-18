@@ -4,6 +4,9 @@
 #include <span>
 #include <vector>
 #include <memory_resource>
+#if _MSC_VER && !__INTEL_COMPILER // msvc getting a special treatment... (https://en.cppreference.com/w/cpp/language/operator_alternative)
+#include <ciso646>
+#endif
 
 #include "internal/helper_macros.hpp"
 #include "internal/constructor_vtable.hpp"
