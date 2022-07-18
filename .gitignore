@@ -30,3 +30,8 @@
 *.exe
 *.out
 *.app
+
+# Ignore unnecessary folders
+/benchmark/libs
+/.idea
+/cmake-build-*
