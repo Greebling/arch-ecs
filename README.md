@@ -52,7 +52,6 @@ Arch ECS' query system is designed to be written in a very natural way that make
 ```c++
 using arch::with;
 using arch::with_optional;
-using arch::with_exactly;
 my_world.for_all(with<component1 &> and with_optional<component2>,
                  [](arch::entity, component1 &my_component1, component2 *my_component2)
                  {
