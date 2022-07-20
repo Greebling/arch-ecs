@@ -113,49 +113,8 @@ namespace arch
 				return false;
 			}
 			
-			auto to_search = det::to_type_ids<t_components...>();
-			std::sort(to_search.begin(), to_search.end());
-			
-			auto current_q = types.begin();
-			auto current_from = to_search.cbegin();
-			
-			// since both lists are in sorted order, we can iterate over them in linear time
-			while (true)
-			{
-				std::int_fast64_t comp = current_from->value - current_q->value;
-				if (comp == 0) // matched component
-				{
-					++current_from;
-					if (current_from == to_search.cend())
-					{
-						return true;
-					}
-					else
-					{
-						++current_q;
-						if (current_q == types.end())
-						{
-							return false;
-						}
-					}
-				}
-				else if (comp < 0)
-				{
-					++current_from;
-					if (current_from == to_search.cend())
-					{
-						return false;
-					}
-				}
-				else
-				{
-					++current_q;
-					if (current_q == types.end())
-					{
-						return false;
-					}
-				}
-			}
+			auto to_search = ids_of<t_components...>();
+			return contains_ids(types, to_search);
 		}
 	};
 	
@@ -209,11 +168,7 @@ namespace arch
 				return false;
 			}
 			
-			auto to_search = det::to_type_ids<t_components...>();
-			std::sort(to_search.begin(), to_search.end(), [](type_id a, type_id b)
-			{
-				return a.value < b.value;
-			});
+			auto to_search = ids_of<t_components...>();
 			
 			auto current_q = types.begin();
 			auto current_from = to_search.cbegin();

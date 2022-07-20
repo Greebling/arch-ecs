@@ -4,6 +4,7 @@
 #include <string_view>
 #include <span>
 #include <algorithm>
+
 #if _MSC_VER && !__INTEL_COMPILER // msvc getting a special treatment... (https://en.cppreference.com/w/cpp/language/operator_alternative)
 #include <ciso646>
 #endif
@@ -161,7 +162,8 @@ namespace arch
 		return {det::hashing::crc32(name_of<std::remove_pointer_t<std::decay_t<T>>>())};
 	}
 	
-	template <typename ...t_components>
+	template<typename ...t_components>
+	[[nodiscard]]
 	static consteval std::array<type_id, sizeof...(t_components)> ids_of()
 	{
 		std::array<type_id, sizeof...(t_components)> types = {id_of<t_components>()...};
@@ -169,6 +171,76 @@ namespace arch
 		return types;
 	}
 	
+	template<typename ...t_components>
+	[[nodiscard]]
+	static consteval auto ids_of_non_pointers()
+	{
+		constexpr std::array whole_list = ids_of<t_components...>();
+		constexpr std::array<bool, sizeof...(t_components)> is_pointer = {std::is_pointer_v<t_components> ...};
+		constexpr std::size_t non_pointer_count = ((std::is_pointer_v<t_components> ? 0 : 1) + ...);
+		std::array<type_id, non_pointer_count> non_pointer_ids{};
+		
+		std::size_t non_pointer_index = 0;
+		for (std::size_t whole_index = 0; whole_index < non_pointer_count; ++whole_index)
+		{
+			if (not is_pointer[whole_index])
+			{
+				non_pointer_ids[non_pointer_index] = whole_list[whole_index];
+				++non_pointer_index;
+			}
+		}
+		return non_pointer_ids;
+	}
+	
+	[[nodiscard]]
+	static constexpr bool contains_ids(std::span<const type_id> types, std::span<const type_id> required_types)
+	{
+		auto current_q = types.begin();
+		auto current_required = required_types.begin();
+		
+		if (current_q == types.end())
+		{
+			return current_required == required_types.end();
+		}
+		
+		// since both lists are in sorted order, we can iterate over them in linear time
+		while (true)
+		{
+			int_fast64_t comp = current_required->value - current_q->value;
+			if (comp == 0) // matched component
+			{
+				++current_required;
+				if (current_required == required_types.end())
+				{
+					return true;
+				}
+				else
+				{
+					++current_q;
+					if (current_q == types.end())
+					{
+						return false;
+					}
+				}
+			}
+			else if (comp < 0)
+			{
+				++current_required;
+				if (current_required == required_types.end())
+				{
+					return false;
+				}
+			}
+			else
+			{
+				++current_q;
+				if (current_q == types.end())
+				{
+					return false;
+				}
+			}
+		}
+	}
 	
 	struct type_info
 	{
@@ -198,10 +270,11 @@ namespace arch
 		return {id_of<T>(),
 		        sizeof(T),
 #if defined ARCH_VERBOSE_TYPE_INFO
-                name_of<T>(),
+				name_of<T>(),
 #endif
 		};
 	}
+	
 	namespace det::hashing
 	{
 		[[nodiscard]]
