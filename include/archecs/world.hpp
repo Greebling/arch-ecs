@@ -100,7 +100,7 @@ namespace arch
 		
 		void add_component(entity target_entity, type_info type_to_add, void *component_data, det::multi_destructor component_destructor)
 		{
-			if(has_component(target_entity, type_to_add.id))
+			if (has_component(target_entity, type_to_add.id))
 			{
 				return;
 			}
@@ -118,7 +118,7 @@ namespace arch
 		{
 			arch_assert_external(is_alive(target_entity));
 			
-			if(not has_component(target_entity, to_remove))
+			if (not has_component(target_entity, to_remove))
 			{
 				return;
 			}
@@ -276,11 +276,16 @@ namespace arch
 			}
 		}
 		
+		template<typename t_function>
+		void for_all_with(t_function &&function)
+		{
+			for_all_with_impl(arch_fwd(function), det::arguments_of<t_function>());
+		}
+		
 		template<typename t_filter, typename t_function>
 		void for_all_parallel(std::size_t n_threads, t_filter, t_function &&function)
 		{
 			using searched_types = typename t_filter::resulting_components;
-			
 			
 			std::vector<std::thread> threads{};
 			threads.reserve(n_threads);
@@ -332,14 +337,29 @@ namespace arch
 				thread.join();
 			}
 		}
+	
 	private:
+		template<typename t_function, typename ...t_args>
+		void for_all_with_impl(t_function &&function, det::type_list<entity, t_args...>)
+		{
+			using searched_types = typename det::type_list<t_args...>;
+			// currently we can simply deduct all needed types from non pointer arguments
+			constexpr std::array required_type_ids = ids_of_non_pointers<t_args...>();
+			for (archetype &curr_archetype: _archetypes)
+			{
+				std::span<const type_id> contained_types = curr_archetype.get_contained_types();
+				if (contains_ids(contained_types, required_type_ids))
+				{
+					apply_foreach_function_to_archetype(curr_archetype, function, searched_types{});
+				}
+			}
+		}
 		
 		template<typename t_function, typename ...t_components>
 		static void apply_foreach_function_to_archetype(archetype &arch_restrict current_archetype, t_function &function,
 		                                                det::type_list<t_components...> type_list)
 		{
-			static_assert(std::is_invocable_v<t_function, entity, t_components...>// || std::is_invocable_v<t_function, entity, t_components &...>
-			              ,"Types of function does not match with the ones of the query");
+			static_assert(std::is_invocable_v<t_function, entity, t_components...>, "Types of function does not match with the ones of the query");
 			
 			constexpr std::array wanted_types = ids_of<t_components...>();
 			std::array<det::rtt_vector *, sizeof...(t_components)> component_vectors;
@@ -386,10 +406,11 @@ namespace arch
 			{
 				auto found = std::find(to.begin(), to.end(), from[i]);
 				
-				if(found == to.end())
+				if (found == to.end())
 				{
 					throw std::exception();
-				} else
+				}
+				else
 				{
 					std::size_t to_index = found - to.begin();
 					mapped_indices[i] = to_index;
@@ -488,9 +509,9 @@ namespace arch
 		{
 			entity_info &info = get_info(target_entity);
 			det::archetype_internal &previous_archetype = _archetypes[previous_archetype_index].internal();
-			auto[next_in_archetype_index, swapped_entity] = target_archetype.internal().move_entity_over_from(target_entity,
-			                                                                                                  previous_archetype,
-			                                                                                                  info.in_archetype_index);
+			auto [next_in_archetype_index, swapped_entity] = target_archetype.internal().move_entity_over_from(target_entity,
+			                                                                                                   previous_archetype,
+			                                                                                                   info.in_archetype_index);
 			get_info(swapped_entity).in_archetype_index = info.in_archetype_index;
 			info.in_archetype_index = next_in_archetype_index;
 		}

@@ -261,4 +261,20 @@ namespace world_test
 			                   CHECK_EQ(my_t3.data, t3().data);
 		                   });
 	}
+	
+	TEST_CASE("world foreach with data access")
+	{
+		world test_world{};
+		entity created1 = test_world.create_entity();
+		test_world.add_components(created1, t1{}, t2{256}, t3{512});
+		entity created2 = test_world.create_entity();
+		test_world.add_components(created2, t1{}, t2{256}, t3{512});
+		
+		test_world.for_all_with([](entity, const t1 &my_t1, const t2 &my_t2, const t3 &my_t3)
+		{
+			CHECK_EQ(my_t1.data, t1().data);
+			CHECK_EQ(my_t2.data, 256);
+			CHECK_EQ(my_t3.data, 512);
+		});
+	}
 }
