@@ -1,7 +1,6 @@
 #pragma once
 
-#include <array>
-
+#include <cstdint>
 
 namespace arch::det
 {
@@ -20,8 +19,8 @@ namespace arch::det
 		return {};
 	}
 	
-	template<typename A, typename B>
-	using combined_list = decltype(combine_lists_impl(A{}, B{}));
+	template<typename t_first, typename t_second>
+	using combined_list = decltype(combine_lists_impl(t_first{}, t_second{}));
 	
 	template<typename MemberPtrT>
 	struct function_traits
@@ -34,7 +33,7 @@ namespace arch::det
 		using result = t_result;
 		using arguments = type_list<t_args...>;
 		
-		static constexpr bool isConst = false;
+		static constexpr bool is_const = false;
 	};
 	
 	template<typename t_result, typename t_class, typename ...t_args>
@@ -43,7 +42,7 @@ namespace arch::det
 		using result = t_result;
 		using arguments = type_list<t_args...>;
 		
-		static constexpr bool isConst = true;
+		static constexpr bool is_const = true;
 	};
 	
 	template<typename t>
