@@ -157,7 +157,7 @@ namespace arch
 	struct with_exactly_q : public det::component_query<with_exactly_q<t_components...>>
 	{
 		static_assert(((not std::is_pointer_v<t_components>) and ...));
-		using resulting_components = det::type_list<t_components &...>;
+		using resulting_components = det::type_list<t_components...>;
 		
 		/// \param types an in ascending order sorted span
 		/// \return if that span is equal to t_component...
