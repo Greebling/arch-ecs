@@ -45,7 +45,7 @@ namespace arch::det
 		std::vector<t_job *> schedule_jobs()
 		{
 			// set tmp_dep_count
-			for(job_node& node : _jobs)
+			for (job_node &node: _jobs)
 			{
 				node.tmp_previous_count = node.previous_count;
 			}
@@ -71,7 +71,7 @@ namespace arch::det
 				job_node *start_job = start_nodes[i];
 				resulting_order.push_back(start_job->job);
 				
-				for (std::size_t previous_job_id : start_job->previous)
+				for (std::size_t previous_job_id: start_job->previous)
 				{
 					auto &following_job = _jobs[previous_job_id];
 					following_job.tmp_previous_count -= 1;

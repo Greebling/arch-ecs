@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <span>
+
 #if _MSC_VER && !__INTEL_COMPILER // msvc getting a special treatment... (https://en.cppreference.com/w/cpp/language/operator_alternative)
 #include <ciso646>
 #endif
@@ -139,7 +140,7 @@ namespace arch
 	{
 		static_assert(((not std::is_pointer_v<t_components>) and ...));
 		
-		using resulting_components = det::type_list<t_components*...>;
+		using resulting_components = det::type_list<t_components *...>;
 		
 		constexpr static bool filter(std::span<const type_id> types)
 		{

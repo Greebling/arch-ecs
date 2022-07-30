@@ -7,13 +7,13 @@
 #if defined ARCH_INTERNAL_ASSERTIONS
 #define arch_assert_internal(x) do {if(!( x )) { assert( x ); } }while(0)
 #else
-#define arch_assert_internal( x ) void(x)
+#define arch_assert_internal(x) void(x)
 #endif
 
 #if defined ARCH_INTERNAL_ASSERTIONS || defined ARCH_ASSERTIONS
 #define arch_assert_external(x) do {if(!( x )) { assert( x ); } }while(0)
 #else
-#define arch_assert_external( x ) void(x)
+#define arch_assert_external(x) void(x)
 #endif
 
 #if defined ARCH_SAFE_PTR_INIT

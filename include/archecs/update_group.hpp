@@ -139,7 +139,7 @@ namespace arch
 		{
 			return {_contained_systems};
 		}
-		
+	
 	private:
 		void on_systems_changed()
 		{
