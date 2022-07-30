@@ -549,14 +549,14 @@ namespace arch
 				auto modifer = created.internal().modify_archetype();
 				modifer.copy_settings_from(previous, _archetype_memory);
 				
-				for (type_id remove_type: to_remove)
-				{
-					modifer.remove_type(remove_type);
-				}
-				
 				for (std::size_t i = 0; i < to_add.size(); ++i)
 				{
 					modifer.add_type(_archetype_memory, to_add[i], added_destructors[i]);
+				}
+				
+				for (type_id remove_type: to_remove)
+				{
+					modifer.remove_type(remove_type);
 				}
 			}
 			// TODO: This might return the same archetype, how do we deal with this?
