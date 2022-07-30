@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 #include <memory_resource>
+
 #if _MSC_VER && !__INTEL_COMPILER // msvc getting a special treatment... (https://en.cppreference.com/w/cpp/language/operator_alternative)
 #include <ciso646>
 #endif
@@ -147,8 +148,19 @@ namespace arch
 			[[nodiscard]]
 			bool contains_type(type_id type) const
 			{
-				auto search_result = std::lower_bound(_type_data.cbegin(), _type_data.cend(), type);
-				return search_result != _type_data.cend() && *search_result == type;
+				for (type_id curr_type: _type_data)
+				{
+					if (curr_type == type)
+					{
+						return true;
+					}
+					else if (curr_type > type)
+					{
+						return false;
+					}
+				}
+				
+				return false;
 			}
 			
 			[[nodiscard]]
@@ -251,7 +263,7 @@ namespace arch
 				template<typename T>
 				void add_type(std::pmr::memory_resource &resource)
 				{
-					if(_archetype.contains_type(id_of<T>()))
+					if (_archetype.contains_type(id_of<T>()))
 					{
 						return;
 					}
@@ -263,7 +275,7 @@ namespace arch
 				/// adds a new type to the archetype
 				void add_type(std::pmr::memory_resource &resource, type_info component_info, multi_destructor destruct_n)
 				{
-					if(_archetype.contains_type(component_info.id))
+					if (_archetype.contains_type(component_info.id))
 					{
 						return;
 					}
@@ -274,14 +286,14 @@ namespace arch
 				
 				void remove_type(type_id to_remove)
 				{
-					if(not _archetype.contains_type(to_remove))
+					if (not _archetype.contains_type(to_remove))
 					{
 						return;
 					}
 					
 					for (std::size_t i = 0; i < _archetype._type_data.size(); ++i)
 					{
-						if(to_remove == _archetype._type_data[i])
+						if (to_remove == _archetype._type_data[i])
 						{
 							_archetype._type_data[i] = _archetype._type_data.back();
 							_archetype._component_data[i] = std::move(_archetype._component_data.back());
