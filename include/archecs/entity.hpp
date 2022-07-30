@@ -24,9 +24,11 @@ namespace arch
 		
 		constexpr bool operator<(entity other) const
 		{
-			static_assert(sizeof(entity_id_t) + sizeof(version_t) <= sizeof(std::uint64_t));
-			std::uint64_t entity_ver_id = std::uint64_t(version) | (std::uint64_t(id) << sizeof(entity_id_t));
-			std::uint64_t other_entity_ver_id = std::uint64_t(other.version) | (std::uint64_t(other.id) << sizeof(entity_id_t));
+			static_assert(sizeof(entity_id_t) + sizeof(version_t) <= sizeof(std::uint_fast64_t));
+			constexpr std::uint_fast64_t id_shift = sizeof(entity_id_t) * 8;
+			
+			std::uint_fast64_t entity_ver_id = std::uint_fast64_t(version) | (std::uint_fast64_t(id) << id_shift);
+			std::uint_fast64_t other_entity_ver_id = std::uint_fast64_t(other.version) | (std::uint_fast64_t(other.id) << id_shift);
 			return entity_ver_id < other_entity_ver_id;
 		}
 		
