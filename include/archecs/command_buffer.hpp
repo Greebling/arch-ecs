@@ -3,6 +3,8 @@
 #include <vector>
 #include <span>
 #include <limits>
+#include <queue>
+#include <algorithm>
 
 #include "archetype.hpp"
 #include "world.hpp"
@@ -110,6 +112,7 @@ namespace arch
 			
 			_commands.emplace_back(entity_command_type::add_component, target, info_of<t_component>(), add_data);
 		}
+		
 		template<typename t_component>
 		void add_component(virtual_entity target, t_component &&component)
 		{
@@ -179,13 +182,13 @@ namespace arch
 			{
 				entity current_entity = _commands[command_index].target;
 				std::size_t same_entity_modifications_end = command_index;
-				while (same_entity_modifications_end < iteration_end
-				       && _commands[same_entity_modifications_end].target == current_entity)
+				while (same_entity_modifications_end + 1 < iteration_end
+				       && _commands[same_entity_modifications_end + 1].target == current_entity)
 				{
 					++same_entity_modifications_end;
 				}
 				
-				if (command_index + 1 == same_entity_modifications_end)
+				if (command_index == same_entity_modifications_end)
 				{
 					// only do one modification to entity, no batching needed
 					execute_command(_commands[command_index]);
@@ -278,18 +281,9 @@ namespace arch
 	private:
 		void optimize_entity_modification_order()
 		{
-			std::sort(_commands.begin(), _commands.end(), [](const entity_command &lhs, const entity_command &rhs)
+			std::stable_sort(_commands.begin(), _commands.end(), [](const entity_command &lhs, const entity_command &rhs)
 			{
-				if (lhs.target == rhs.target)
-				{
-					// bunch similar command types together
-					return lhs.type < rhs.type;
-				}
-				else
-				{
-					// bunch modifications on the same entity together
-					return lhs.target.id < rhs.target.id;
-				}
+				return lhs.target < rhs.target;
 			});
 			// we could also sort by an entity's archetype, but this probably does not gain us much in typical use cases as the commands usually happen inside
 			// world.foreach calls which in itself operate on a per-archetype basis
