@@ -93,6 +93,10 @@ namespace arch
 		using type_id_t = std::uint32_t;
 		
 		type_id_t value;
+
+#if defined ARCH_VERBOSE_TYPE_INFO
+		std::string_view type_name{};
+#endif
 		
 		[[nodiscard]]
 		constexpr bool operator==(type_id other) const noexcept
@@ -159,7 +163,12 @@ namespace arch
 	[[nodiscard]]
 	static consteval type_id id_of()
 	{
-		return {det::hashing::crc32(name_of<std::remove_pointer_t<std::decay_t<T>>>())};
+		constexpr std::string_view name = name_of<std::remove_pointer_t<std::decay_t<T>>>();
+		return {det::hashing::crc32(name)
+#if defined ARCH_VERBOSE_TYPE_INFO
+				,name
+#endif
+		};
 	}
 	
 	template<typename ...t_components>

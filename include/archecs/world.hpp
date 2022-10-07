@@ -18,6 +18,37 @@ namespace arch
 	class world
 	{
 	public:
+		struct entity_info
+		{
+			entity_info() = default;
+			
+			entity_info(entity identifier,
+			            std::size_t owning_archetype_index,
+			            std::size_t in_archetype_index)
+					: identifier(identifier),
+					  owning_archetype_index(owning_archetype_index),
+					  in_archetype_index(in_archetype_index)
+			{
+			}
+			
+			entity identifier;
+			std::size_t owning_archetype_index;
+			std::size_t in_archetype_index;
+		};
+		
+		[[nodiscard]]
+		entity_info &get_info(entity of_entity)
+		{
+			return _entities[of_entity.id];
+		}
+		
+		[[nodiscard]]
+		const entity_info &get_info(entity of_entity) const
+		{
+			return _entities[of_entity.id];
+		}
+	
+	public:
 		world()
 		{
 			// create base archetype
@@ -74,15 +105,53 @@ namespace arch
 			return get_info(entity_to_check).identifier.version == entity_to_check.version;
 		}
 		
+		template<typename t_added_component>
+		void add_component(entity target_entity, t_added_component &&component)
+		{
+			constexpr type_id target_type = id_of<t_added_component>();
+			constexpr type_info type_info = info_of<t_added_component>();
+			
+			arch_assert_external(is_alive(target_entity));
+			
+			entity_info info = get_info(target_entity);
+			archetype &target_archetype = _archetypes[info.owning_archetype_index];
+			
+			if (target_archetype.contains_type(target_type)) [[unlikely]]
+			{
+				set_component(target_archetype, info.in_archetype_index, type_info, std::addressof(component));
+			} else
+			{
+				add_component(target_entity, type_info, std::addressof(component), det::multi_destructor_of<t_added_component>());
+			}
+		}
+		
 		template<typename ...t_added_components>
 		void add_components(entity target_entity, t_added_components &&...components)
 		{
 			static_assert(sizeof...(t_added_components) != 0);
 			
-			constexpr std::array added_ids = {info_of<t_added_components>()...};
-			constexpr std::array added_destructors = {det::multi_destructor_of<t_added_components>()...};
+			constexpr std::array wanted_added_ids = {info_of<t_added_components>()...};
+			constexpr std::array wanted_added_destructors = {det::multi_destructor_of<t_added_components>()...};
 			
-			modify_component_set(target_entity, {added_ids}, {added_destructors}, {});
+			std::array<type_info, sizeof...(t_added_components)> infos_to_add{};
+			std::array<det::multi_destructor, sizeof...(t_added_components)> destructors_to_add{};
+			std::size_t n_types_to_add = 0;
+			{
+				archetype &current_archetype = get_archetype_of(target_entity);
+				for (std::size_t i = 0; i < wanted_added_ids.size(); ++i)
+				{
+					if (not current_archetype.contains_type(wanted_added_ids[i].id))
+					{
+						infos_to_add[n_types_to_add] = wanted_added_ids[i];
+						destructors_to_add[n_types_to_add] = wanted_added_destructors[i];
+						n_types_to_add++;
+					}
+					// TODO: set components else
+				}
+			}
+			
+			modify_component_set(target_entity, {infos_to_add.cbegin(), infos_to_add.cbegin() + n_types_to_add},
+			                     {destructors_to_add.cbegin(), destructors_to_add.cbegin() + n_types_to_add}, {});
 			
 			entity_info info = get_info(target_entity);
 			archetype &target_archetype = _archetypes[info.owning_archetype_index];
@@ -98,20 +167,70 @@ namespace arch
 			modify_component_set(target_entity, {}, {}, {removed_ids});
 		}
 		
+		void set_component(entity target_entity, type_info type_to_set, void *component_data)
+		{
+			entity_info info = get_info(target_entity);
+			archetype &target_archetype = _archetypes[info.owning_archetype_index];
+			
+			if (not target_archetype.contains_type(type_to_set.id))
+			{
+				arch_assert_external(false); // should not happen
+				return;
+			}
+			
+			set_component(target_archetype, info.in_archetype_index, type_to_set, component_data);
+		}
+		
+		void set_component(archetype &target_archetype, std::size_t entity_index, type_info type_info, void *component_data)
+		{
+			arch_assert_internal(target_archetype.contains_type(type_info.id));
+			
+			void *target_data = target_archetype.get_component_data(entity_index, type_info.id);
+			std::memcpy(target_data, component_data, type_info.size);
+		}
+		
 		void add_component(entity target_entity, type_info type_to_add, void *component_data, det::multi_destructor component_destructor)
 		{
 			if (has_component(target_entity, type_to_add.id))
 			{
+				set_component(target_entity, type_to_add, component_data);
 				return;
 			}
 			
-			modify_component_set(target_entity, {&type_to_add, &type_to_add + 1}, {&component_destructor, &component_destructor + 1}, {});
+			entity_info &current_info = get_info(target_entity);
+			entity_info previous_info = current_info;
+			archetype &previous_archetype = _archetypes[current_info.owning_archetype_index];
+			std::uint32_t previous_archetype_hash = previous_archetype.internal().get_combined_types_hash();
+			archetype& target_archetype = add_component(current_info, previous_archetype_hash, type_to_add, component_destructor);
 			
-			entity_info info = get_info(target_entity);
-			archetype &target_archetype = _archetypes[info.owning_archetype_index];
-			
-			void *target_data = target_archetype.get_component_data(info.in_archetype_index, type_to_add.id);
+			void *target_data = target_archetype.get_component_data(previous_info.in_archetype_index, type_to_add.id);
+			current_info.in_archetype_index = previous_info.in_archetype_index;
 			std::memcpy(target_data, component_data, type_to_add.size);
+		}
+		
+		archetype &add_component(entity_info &arch_restrict info, std::uint32_t archetype_hash, type_info type_to_add, det::multi_destructor destructor)
+		{
+			std::uint32_t target_archetype_hash = det::hashing::combine_hashes(archetype_hash, type_to_add.id.value);
+			const std::size_t previous_archetype_index = info.owning_archetype_index;
+			
+			auto archetype_search = _types_to_archetype.find(target_archetype_hash);
+			archetype *arch_restrict target_archetype;
+			if (archetype_search != _types_to_archetype.end())
+			{
+				target_archetype = &_archetypes[archetype_search->second];
+				info.owning_archetype_index = archetype_search->second;
+			}
+			else
+			{
+				target_archetype = &create_archetype_from_base_with(info.owning_archetype_index,
+				                                                    {&type_to_add, &type_to_add + 1},
+				                                                    {&destructor, &destructor + 1},
+				                                                    {});
+				info.owning_archetype_index = _archetypes.size() - 1;
+			}
+			
+			move_entity_to(info.identifier, previous_archetype_index, *target_archetype);
+			return *target_archetype;
 		}
 		
 		void remove_component(entity target_entity, type_id to_remove)
@@ -150,6 +269,8 @@ namespace arch
 		void modify_component_set(entity target_entity, std::span<const type_info> added_types, std::span<const det::multi_destructor> added_types_destructors,
 		                          std::span<const type_id> removed_types)
 		{
+			using det::hashing::combine_hashes;
+			
 			arch_assert_external(is_alive(target_entity));
 			arch_assert_external(added_types.size() == added_types_destructors.size());
 			
@@ -157,7 +278,6 @@ namespace arch
 			const std::size_t previous_archetype_index = info.owning_archetype_index;
 			std::uint32_t previous_archetype_hash = _archetypes[info.owning_archetype_index].internal().get_combined_types_hash();
 			
-			using det::hashing::combine_hashes;
 			std::uint32_t target_archetype_hash = combine_hashes(combine_hashes(added_types), combine_hashes(removed_types));
 			target_archetype_hash = combine_hashes(target_archetype_hash, previous_archetype_hash);
 			
@@ -583,37 +703,6 @@ namespace arch
 			_types_to_archetype[combined_types_hash] = created_archetype_index;
 			
 			return created;
-		}
-	
-	public:
-		struct entity_info
-		{
-			entity_info() = default;
-			
-			entity_info(entity identifier,
-			            std::size_t owning_archetype_index,
-			            std::size_t in_archetype_index)
-					: identifier(identifier),
-					  owning_archetype_index(owning_archetype_index),
-					  in_archetype_index(in_archetype_index)
-			{
-			}
-			
-			entity identifier;
-			std::size_t owning_archetype_index;
-			std::size_t in_archetype_index;
-		};
-		
-		[[nodiscard]]
-		entity_info &get_info(entity of_entity)
-		{
-			return _entities[of_entity.id];
-		}
-		
-		[[nodiscard]]
-		const entity_info &get_info(entity of_entity) const
-		{
-			return _entities[of_entity.id];
 		}
 	
 	private:

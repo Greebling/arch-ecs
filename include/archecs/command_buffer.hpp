@@ -33,6 +33,11 @@ namespace arch
 			set_component
 		};
 		
+		static constexpr bool IsBatchable(entity_command_type command_type)
+		{
+			return command_type != entity_command_type::add_component && command_type != entity_command_type::remove_component;
+		}
+		
 		struct add_command_data
 		{
 			template<typename t_component>
@@ -219,7 +224,7 @@ namespace arch
 					
 					std::size_t batched_commands_index = command_index;
 					
-					for (; batched_commands_index < same_entity_modifications_end; ++batched_commands_index)
+					for (; batched_commands_index <= same_entity_modifications_end; ++batched_commands_index)
 					{
 						auto &current_command = _commands[batched_commands_index];
 						switch (_commands[batched_commands_index].type)
@@ -263,11 +268,14 @@ namespace arch
 					// execute commands that could not be batched
 					for (std::size_t i = batched_commands_index; i < same_entity_modifications_end; ++i)
 					{
-						execute_command(_commands[i]);
+						if (not IsBatchable(_commands[i].type))
+						{
+							execute_command(_commands[i]);
+						}
 					}
 					
 					// jump ahead the modifications of the next entity
-					command_index = same_entity_modifications_end - 1;
+					command_index = same_entity_modifications_end;
 					
 					added_types.clear();
 					added_destructors.clear();

@@ -8,7 +8,7 @@ namespace arch::det
 	template<typename T>
 	static inline constexpr void destruct_n(void *source, std::size_t n)
 	{
-		if constexpr(not std::is_trivially_destructible_v<T>)
+		if constexpr (not std::is_trivially_destructible_v<T>)
 		{
 			T *typed_source = reinterpret_cast<T *>(source);
 			
@@ -18,7 +18,7 @@ namespace arch::det
 	
 	struct multi_destructor
 	{
-		void (*const value)(void *, std::size_t);
+		void (*value)(void *, std::size_t);
 	};
 	
 	template<typename T>
