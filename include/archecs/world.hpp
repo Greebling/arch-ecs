@@ -479,7 +479,8 @@ namespace arch
 		static void apply_foreach_function_to_archetype(archetype &arch_restrict current_archetype, t_function &function,
 		                                                det::type_list<t_components...> type_list)
 		{
-			static_assert(std::is_invocable_v<t_function, entity, t_components...>, "Types of function does not match with the ones of the query");
+			static_assert(std::is_invocable_v<t_function, entity, t_components...>,
+			        "Types of function does not match with the ones of the query. Are you missing an arch:entity as the first parameter?");
 			
 			constexpr std::array wanted_types = ids_of<t_components...>();
 			std::array<det::rtt_vector *, sizeof...(t_components)> component_vectors;
