@@ -11,3 +11,4 @@ add_executable(arch_ecs_test
         group_test.cpp)
 
 target_compile_options(arch_ecs_test PUBLIC -std=c++20 -Wall -Wextra -Wpedantic -Winit-self)
+target_compile_definitions(arch_ecs_test PUBLIC ARCH_INTERNAL_ASSERTIONS ARCH_SAFE_PTR_INIT ARCH_VERBOSE_TYPE_INFO)

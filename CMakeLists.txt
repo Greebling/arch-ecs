@@ -32,12 +32,10 @@ if(CMAKE_PROJECT_NAME STREQUAL "arch_ecs" AND BUILD_TEST)
     include(CTest)
     add_subdirectory(test)
     target_link_libraries(arch_ecs_test PRIVATE arch_ecs)
-    target_compile_definitions(arch_ecs_test INTERFACE ARCH_INTERNAL_ASSERTIONS ARCH_SAFE_PTR_INIT ARCH_VERBOSE_TYPE_INFO)
 endif()
 
 # benchmark build
 if(CMAKE_PROJECT_NAME STREQUAL "arch_ecs" AND BUILD_BENCHMARK)
     add_subdirectory(benchmark)
     target_link_libraries(arch_ecs_benchmark PRIVATE arch_ecs)
-    target_compile_definitions(arch_ecs_benchmark INTERFACE ARCH_INTERNAL_ASSERTIONS ARCH_SAFE_PTR_INIT)
 endif()

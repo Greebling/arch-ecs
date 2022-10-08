@@ -17,4 +17,6 @@ target_link_libraries(arch_ecs_benchmark PRIVATE nanobench)
 
 target_link_libraries(arch_ecs_benchmark PRIVATE EnTT::EnTT)
 target_include_directories(arch_ecs_benchmark PRIVATE libs/entt-3.10.1/src)
+
 target_compile_options(arch_ecs_benchmark PUBLIC -ffast-math)
+target_compile_definitions(arch_ecs_benchmark PUBLIC ARCH_INTERNAL_ASSERTIONS ARCH_SAFE_PTR_INIT)
