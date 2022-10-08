@@ -214,7 +214,7 @@ namespace arch
 				
 				~archetype_modifier()
 				{
-					// maybe not always necessary, but wont hurt since in sorted case we will only iterate over all component vectors once
+					// maybe not always necessary, but won't hurt since in sorted case we will only iterate over all component vectors once
 					sort_types();
 				}
 				
