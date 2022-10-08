@@ -95,7 +95,7 @@ namespace world_test
 		}
 	}
 	
-	TEST_CASE("world remove component")
+	TEST_CASE("world remove components")
 	{
 		world test_world{};
 		entity created1 = test_world.create_entity();
@@ -107,7 +107,7 @@ namespace world_test
 		CHECK(not entity_archetype.contains_type(arch::id_of<t2>()));
 	}
 	
-	TEST_CASE("world modify component")
+	TEST_CASE("world modify component set")
 	{
 		world test_world{};
 		entity created1 = test_world.create_entity();
@@ -135,7 +135,7 @@ namespace world_test
 		}
 	}
 	
-	TEST_CASE("world add component templated")
+	TEST_CASE("world add components templated")
 	{
 		world test_world{};
 		entity created1 = test_world.create_entity();
@@ -149,7 +149,24 @@ namespace world_test
 		CHECK_EQ(test_world.get_component<t2>(created2).data, 4);
 	}
 	
-	TEST_CASE("world remove component templated")
+	TEST_CASE("world add components already added")
+	{
+		world test_world{};
+		entity created1 = test_world.create_entity();
+		test_world.add_components(created1, t1{3}, t2{4});
+		test_world.add_components(created1, t1{999}, t2{888});
+		
+		entity created2 = test_world.create_entity();
+		test_world.add_components(created2, t2{4}, t1{3});
+		test_world.add_components(created2, t1{999}, t2{888});
+		
+		CHECK_EQ(test_world.get_component<t1>(created1).data, 999);
+		CHECK_EQ(test_world.get_component<t1>(created2).data, 999);
+		CHECK_EQ(test_world.get_component<t2>(created1).data, 888);
+		CHECK_EQ(test_world.get_component<t2>(created2).data, 888);
+	}
+	
+	TEST_CASE("world remove components templated")
 	{
 		world test_world{};
 		entity created1 = test_world.create_entity();
