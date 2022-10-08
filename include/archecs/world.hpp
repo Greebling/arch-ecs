@@ -91,7 +91,6 @@ namespace arch
 			archetype &owning_archetype = _archetypes[entity_info.owning_archetype_index];
 			
 			entity swapped_entity = owning_archetype.internal().remove_entity(entity_info.in_archetype_index);
-			get_info(swapped_entity).in_archetype_index = entity_info.in_archetype_index;
 		}
 		
 		[[nodiscard]]
@@ -119,7 +118,8 @@ namespace arch
 			if (target_archetype.contains_type(target_type)) [[unlikely]]
 			{
 				set_component(target_archetype, info.in_archetype_index, type_info, std::addressof(component));
-			} else
+			}
+			else
 			{
 				add_component(target_entity, type_info, std::addressof(component), det::multi_destructor_of<t_added_component>());
 			}
@@ -133,25 +133,39 @@ namespace arch
 			constexpr std::array wanted_added_ids = {info_of<t_added_components>()...};
 			constexpr std::array wanted_added_destructors = {det::multi_destructor_of<t_added_components>()...};
 			
+			archetype &current_archetype = get_archetype_of(target_entity);
+			
+			
+			const std::array<void *, sizeof...(t_added_components)> to_add_data{&components...};
+			
 			std::array<type_info, sizeof...(t_added_components)> infos_to_add{};
 			std::array<det::multi_destructor, sizeof...(t_added_components)> destructors_to_add{};
+			entity_info previous_info = get_info(target_entity);
 			std::size_t n_types_to_add = 0;
+			bool changes_archetype = false;
+			
+			for (std::size_t i = 0; i < wanted_added_ids.size(); ++i)
 			{
-				archetype &current_archetype = get_archetype_of(target_entity);
-				for (std::size_t i = 0; i < wanted_added_ids.size(); ++i)
+				type_info current_info_to_add = wanted_added_ids[i];
+				if (current_archetype.contains_type(current_info_to_add.id))
 				{
-					if (not current_archetype.contains_type(wanted_added_ids[i].id))
-					{
-						infos_to_add[n_types_to_add] = wanted_added_ids[i];
-						destructors_to_add[n_types_to_add] = wanted_added_destructors[i];
-						n_types_to_add++;
-					}
-					// TODO: set components else
+					set_component(current_archetype, previous_info.in_archetype_index, current_info_to_add, to_add_data[i]);
+				}
+				else
+				{
+					changes_archetype = true;
+					
+					infos_to_add[n_types_to_add] = current_info_to_add;
+					destructors_to_add[n_types_to_add] = wanted_added_destructors[i];
+					n_types_to_add++;
 				}
 			}
 			
-			modify_component_set(target_entity, {infos_to_add.cbegin(), infos_to_add.cbegin() + n_types_to_add},
-			                     {destructors_to_add.cbegin(), destructors_to_add.cbegin() + n_types_to_add}, {});
+			if (changes_archetype)
+			{
+				modify_component_set(target_entity, {infos_to_add.cbegin(), infos_to_add.cbegin() + n_types_to_add},
+				                     {destructors_to_add.cbegin(), destructors_to_add.cbegin() + n_types_to_add}, {});
+			}
 			
 			entity_info info = get_info(target_entity);
 			archetype &target_archetype = _archetypes[info.owning_archetype_index];
@@ -198,13 +212,11 @@ namespace arch
 			}
 			
 			entity_info &current_info = get_info(target_entity);
-			entity_info previous_info = current_info;
 			archetype &previous_archetype = _archetypes[current_info.owning_archetype_index];
 			std::uint32_t previous_archetype_hash = previous_archetype.internal().get_combined_types_hash();
-			archetype& target_archetype = add_component(current_info, previous_archetype_hash, type_to_add, component_destructor);
+			archetype &target_archetype = add_component(current_info, previous_archetype_hash, type_to_add, component_destructor);
 			
-			void *target_data = target_archetype.get_component_data(previous_info.in_archetype_index, type_to_add.id);
-			current_info.in_archetype_index = previous_info.in_archetype_index;
+			void *target_data = target_archetype.get_component_data(current_info.in_archetype_index, type_to_add.id);
 			std::memcpy(target_data, component_data, type_to_add.size);
 		}
 		
@@ -242,7 +254,7 @@ namespace arch
 				return;
 			}
 			
-			entity_info &info = _entities[target_entity.id];
+			entity_info &info = get_info(target_entity);
 			const std::size_t previous_archetype_index = info.owning_archetype_index;
 			
 			// get or create archetype
@@ -274,7 +286,7 @@ namespace arch
 			arch_assert_external(is_alive(target_entity));
 			arch_assert_external(added_types.size() == added_types_destructors.size());
 			
-			entity_info &info = _entities[target_entity.id];
+			entity_info &info = get_info(target_entity);
 			const std::size_t previous_archetype_index = info.owning_archetype_index;
 			std::uint32_t previous_archetype_hash = _archetypes[info.owning_archetype_index].internal().get_combined_types_hash();
 			
@@ -480,7 +492,7 @@ namespace arch
 		                                                det::type_list<t_components...> type_list)
 		{
 			static_assert(std::is_invocable_v<t_function, entity, t_components...>,
-			        "Types of function does not match with the ones of the query. Are you missing an arch:entity as the first parameter?");
+			              "Types of function does not match with the ones of the query. Are you missing an arch:entity as the first parameter?");
 			
 			constexpr std::array wanted_types = ids_of<t_components...>();
 			std::array<det::rtt_vector *, sizeof...(t_components)> component_vectors;
@@ -629,11 +641,12 @@ namespace arch
 		void move_entity_to(entity target_entity, size_t previous_archetype_index, archetype &target_archetype)
 		{
 			entity_info &info = get_info(target_entity);
+			std::size_t previous_in_archetype_index = info.in_archetype_index;
 			det::archetype_internal &previous_archetype = _archetypes[previous_archetype_index].internal();
 			auto [next_in_archetype_index, swapped_entity] = target_archetype.internal().move_entity_over_from(target_entity,
 			                                                                                                   previous_archetype,
-			                                                                                                   info.in_archetype_index);
-			get_info(swapped_entity).in_archetype_index = info.in_archetype_index;
+			                                                                                                   previous_in_archetype_index);
+			get_info(swapped_entity).in_archetype_index = previous_in_archetype_index;
 			info.in_archetype_index = next_in_archetype_index;
 		}
 		
