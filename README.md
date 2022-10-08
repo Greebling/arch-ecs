@@ -2,9 +2,9 @@
  A performance oriented, achetype-based ECS library written in ECS
  
 # Features
-- Type-safe [entity query system](#entity-query-system) that is easy to read.
 - Zero overhead entity iteration
-- Entity command buffers allow for modifying the components of entities in a reliable manner
+- Type-safe [entity query system](#entity-query-system) that is easy to read.
+- Entity command buffers allow for modifying the components of entities in a reliable manner, even in the context of multithreading
 - Update groups allow for easy scheduling and bundling of individual systems. 
 
 
@@ -52,13 +52,18 @@ Arch ECS' query system is designed to be written in a very natural way that make
 ```c++
 using arch::with;
 using arch::with_optional;
-my_world.for_all(with<component1 &> and with_optional<component2>,
+my_world.for_all(with<component1 &> and with_optional<component2> and not with<component3>,
                  [](arch::entity, component1 &my_component1, component2 *my_component2)
                  {
                  });
 // you can also use 'auto' instead of restating your component types
-my_world.for_all(with<component1 &, component2 &> and with_optional<component3>,
-                 [](arch::entity, auto my_component1, auto my_component2, auto my_component3)
+my_world.for_all(with<component1 &, component2 &>,
+                 [](arch::entity, auto my_component1, auto my_component2)
                  {
                  });
 ```
+
+Currently, there are three different query definitions that can be combined using the ```||``` operator, which can also be written as ```and```:
+- ```with<Ts...>``` which filters for entities with the given component. The resulting argument types in the lambda will directly mirror the given type, including wether that type is a reference
+- ```with_option<Ts...>``` which does not filter out any entities and always results in a ```Ts*...``` arguments in the lambda. The user needs to check if that pointer is a nullptr themselves
+- ```not with<Ts...>```  which does not affect the parameters of the lambda expression but filters out any entities with the components ```Ts...```
