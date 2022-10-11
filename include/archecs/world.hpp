@@ -84,13 +84,14 @@ namespace arch
 				return;
 			}
 			
-			auto &entity_info = get_info(entity_to_destroy);
-			entity_info.identifier.version += 1;
-			_dead_entities.push_back(entity_info.identifier);
+			auto &destroyed_entity_info = get_info(entity_to_destroy);
+			destroyed_entity_info.identifier.version += 1;
+			_dead_entities.push_back(destroyed_entity_info.identifier);
 			
-			archetype &owning_archetype = _archetypes[entity_info.owning_archetype_index];
+			archetype &owning_archetype = _archetypes[destroyed_entity_info.owning_archetype_index];
 			
-			entity swapped_entity = owning_archetype.internal().remove_entity(entity_info.in_archetype_index);
+			entity swapped_entity = owning_archetype.internal().remove_entity(destroyed_entity_info.in_archetype_index);
+			get_info(swapped_entity).in_archetype_index = destroyed_entity_info.in_archetype_index;
 		}
 		
 		[[nodiscard]]
